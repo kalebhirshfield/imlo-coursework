@@ -1,6 +1,11 @@
 import torch
 from torchvision import datasets
-from torchvision.transforms import ToTensor
+import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
+from torch.utils.data import DataLoader
 
-training_data = datasets.OxfordIIITPet(root="data", download=True, transform=ToTensor())
+transform = transforms.Compose([transforms.Resize((256, 256)), transforms.ToTensor()])
+
+data = datasets.OxfordIIITPet(root="data", download=True, transform=transform)
+
+data_loader = DataLoader(data, batch_size=64, shuffle=True)
