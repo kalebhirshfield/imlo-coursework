@@ -10,7 +10,7 @@ data = datasets.OxfordIIITPet(
     root="data", split="test", download=True, transform=transform
 )
 segmentation_data = datasets.OxfordIIITPet(
-    root="data", target_types="segmentation", transform=transform
+    root="data", split="test", target_types="segmentation", transform=transform
 )
 
 segmented_data = []
