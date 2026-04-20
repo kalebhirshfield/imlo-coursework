@@ -32,8 +32,10 @@ for i in range(len(segmentation_data)):
     # plt.show()
     segmented_data.append((segmented_image, data[i][1]))
 
-segmented_dataloader = DataLoader(segmented_data, batch_size=64, shuffle=True)
+train_data, val_data = random_split(segmented_data, [0.8, 0.2])
 
+train_dataloader = DataLoader(train_data, batch_size=64, shuffle=True)
+val_dataloader = DataLoader(val_data, batch_size=64, shuffle=True)
 
 device = (
     torch.accelerator.current_accelerator().type
@@ -71,20 +73,37 @@ lossFn = nn.CrossEntropyLoss()
 optimiser = torch.optim.Adam(model.parameters(), lr=0.001)
 epochs = 30
 
+best_loss = float("inf")
+
 for i in range(epochs):
+    model.train()
     epoch_loss = 0
-    for features, label in segmented_dataloader:
+    for features, label in train_dataloader:
         features = features.to(device)
         label = label.to(device)
         pred = model(features)
         loss = lossFn(pred, label)
-        epoch_loss += loss
+        epoch_loss += loss.item()
 
         optimiser.zero_grad()
         loss.backward()
         optimiser.step()
 
-    print(f"Epoch {i+1} loss: {epoch_loss}")
+    model.eval()
+    correct = 0
+    total = 0
+    val_loss = 0
+    with torch.no_grad:
+        for features, label in val_dataloader:
+            features = features.to(device)
+            label = label.to(device)
+            outputs = model(features)
+            _, predicted = torch.max(outputs, 1)
+            total += label.size(0)
+            correct += (predicted == label).sum().item()
 
+    if val_loss < best_loss:
+        best_loss = val_loss
+        torch.save(model.state_dict(), "model.pth")
 
-torch.save(model.state_dict(), "model.pth")
+    print(f"Epoch {i+1} loss: {epoch_loss}, val loss: {val_loss}")
