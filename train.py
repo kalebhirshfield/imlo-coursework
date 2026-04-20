@@ -8,6 +8,16 @@ import torch.nn.functional as F
 transform = transforms.Compose([transforms.Resize((256, 256)), transforms.ToTensor()])
 
 data = datasets.OxfordIIITPet(root="data", download=True, transform=transform)
+segmentation_data = datasets.OxfordIIITPet(
+    root="data", target_types="segmentation", transform=transform
+)
+
+for i in range(len(segmentation_data)):
+    image, segmentation = segmentation_data[i]
+    segmentation = transform(segmentation)
+    mask = segmentation < 0.00784
+    segmented_image = image * mask
+
 train_data, val_data = random_split(data, [0.8, 0.2])
 train_dataloader = DataLoader(train_data, batch_size=64, shuffle=True)
 val_dataloader = DataLoader(val_data, batch_size=64)
