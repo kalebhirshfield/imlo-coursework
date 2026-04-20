@@ -98,6 +98,7 @@ for i in range(epochs):
             features = features.to(device)
             label = label.to(device)
             outputs = model(features)
+            val_loss += lossFn(pred, label)
             _, predicted = torch.max(outputs, 1)
             total += label.size(0)
             correct += (predicted == label).sum().item()
@@ -106,4 +107,4 @@ for i in range(epochs):
         best_loss = val_loss
         torch.save(model.state_dict(), "model.pth")
 
-    print(f"Epoch {i+1} loss: {epoch_loss}, val loss: {val_loss}")
+    print(f"Epoch {i+1} loss: {epoch_loss}, accuracy: {correct * 100 / total}%")
