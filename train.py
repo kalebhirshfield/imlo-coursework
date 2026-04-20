@@ -98,7 +98,7 @@ for i in range(epochs):
             features = features.to(device)
             label = label.to(device)
             outputs = model(features)
-            val_loss += lossFn(pred, label)
+            val_loss += lossFn(outputs, label)
             _, predicted = torch.max(outputs, 1)
             total += label.size(0)
             correct += (predicted == label).sum().item()
