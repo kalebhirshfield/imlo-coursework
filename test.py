@@ -39,12 +39,11 @@ class ImageClassifier(nn.Module):
         self.fc1 = nn.Linear(16 * 61 * 61, 120)
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, 37)
-        self.dropout = nn.Dropout(0.2)
 
     def forward(self, x):
         x = self.pool(F.relu(self.conv2(self.pool(F.relu(self.conv1(x))))))
         x = torch.flatten(x, 1)
-        x = self.fc3(self.dropout(F.relu(self.fc2(self.dropout(F.relu(self.fc1(x)))))))
+        x = self.fc3(F.relu(self.fc2(F.relu(self.fc1(x)))))
         return x
 
 
