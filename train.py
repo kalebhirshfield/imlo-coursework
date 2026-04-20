@@ -16,8 +16,10 @@ segmented_data = []
 for i in range(len(segmentation_data)):
     image, segmentation = segmentation_data[i]
     segmentation = transform(segmentation)
-    mask = segmentation < 0.00784
+    mask = (segmentation > 0.01176) | (segmentation < 0.00784)
     segmented_image = image * mask
+    # plt.imshow(segmented_image.squeeze().permute(1, 2, 0))
+    # plt.show()
     segmented_data.append((segmented_image, data[i][1]))
 
 segmented_dataloader = DataLoader(segmented_data, batch_size=64, shuffle=True)
@@ -50,21 +52,22 @@ model = ImageClassifier().to(device)
 
 lossFn = nn.CrossEntropyLoss()
 optimiser = torch.optim.Adam(model.parameters(), lr=0.001)
-epochs = 30 * len(segmented_data) // 64
-
-losses = []
+epochs = 30
 
 for i in range(epochs):
-    features, label = next(iter(segmented_dataloader))
-    features = features.to(device)
-    label = label.to(device)
-    pred = model(features)
-    loss = lossFn(pred, label)
-    losses.append(loss.detach())
+    epoch_loss = 0
+    for features, label in segmented_dataloader:
+        features = features.to(device)
+        label = label.to(device)
+        pred = model(features)
+        loss = lossFn(pred, label)
+        epoch_loss += loss
 
-    if i % 10 == 0:
-        print(f"Epoch {i} loss: {loss}")
+        optimiser.zero_grad()
+        loss.backward()
+        optimiser.step()
 
-    optimiser.zero_grad()
-    loss.backward()
-    optimiser.step()
+    print(f"Epoch {i+1} loss: {epoch_loss}")
+
+
+torch.save(model.state_dict(), "model.pth")
