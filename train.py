@@ -12,15 +12,15 @@ segmentation_data = datasets.OxfordIIITPet(
     root="data", target_types="segmentation", transform=transform
 )
 
+segmented_data = []
 for i in range(len(segmentation_data)):
     image, segmentation = segmentation_data[i]
     segmentation = transform(segmentation)
     mask = segmentation < 0.00784
     segmented_image = image * mask
+    segmented_data.append((segmented_image, data[i][1]))
 
-train_data, val_data = random_split(data, [0.8, 0.2])
-train_dataloader = DataLoader(train_data, batch_size=64, shuffle=True)
-val_dataloader = DataLoader(val_data, batch_size=64)
+segmented_dataloader = DataLoader(segmented_data, batch_size=64, shuffle=True)
 
 device = (
     torch.accelerator.current_accelerator().type
@@ -50,16 +50,16 @@ model = ImageClassifier().to(device)
 
 lossFn = nn.CrossEntropyLoss()
 optimiser = torch.optim.Adam(model.parameters(), lr=0.001)
-epochs = 30 * len(train_data) // 64
+epochs = 30 * len(segmented_data) // 64
 
 losses = []
 
 for i in range(epochs):
-    features, labels = next(iter(train_dataloader))
+    features, label = next(iter(segmented_dataloader))
     features = features.to(device)
-    labels = labels.to(device)
+    label = label.to(device)
     pred = model(features)
-    loss = lossFn(pred, labels)
+    loss = lossFn(pred, label)
     losses.append(loss.detach())
 
     if i % 10 == 0:
