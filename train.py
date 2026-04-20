@@ -93,7 +93,7 @@ for i in range(epochs):
     correct = 0
     total = 0
     val_loss = 0
-    with torch.no_grad:
+    with torch.no_grad():
         for features, label in val_dataloader:
             features = features.to(device)
             label = label.to(device)
