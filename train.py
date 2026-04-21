@@ -32,11 +32,12 @@ class TrainDataset(Dataset):
             [
                 transforms.ToPILImage(),
                 transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5),
-                transforms.RandomVerticalFlip(0.5),
-                transforms.RandomHorizontalFlip(0.5),
+                transforms.RandomVerticalFlip(),
+                transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
             ]
         )
+        self.normalise = transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
 
     def __len__(self):
         return len(self.data)
@@ -45,14 +46,16 @@ class TrainDataset(Dataset):
         features, label = self.data[index]
         if self.apply_random:
             features = self.random(features)
+        features = self.normalise(features)
         return features, label
 
 
 train_data, val_data = random_split(segmented_data, [0.8, 0.2])
 train_dataset = TrainDataset(train_data, True)
+val_dataset = TrainDataset(val_data)
 
 train_dataloader = DataLoader(train_dataset, batch_size=64, shuffle=True)
-val_dataloader = DataLoader(val_data, batch_size=64)
+val_dataloader = DataLoader(val_dataset, batch_size=64)
 
 device = (
     torch.accelerator.current_accelerator().type
@@ -98,7 +101,10 @@ class ImageClassifier(nn.Module):
 model = ImageClassifier().to(device)
 
 lossFn = nn.CrossEntropyLoss()
-optimiser = torch.optim.Adam(model.parameters(), lr=0.001)
+optimiser = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.0001)
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+    optimiser, factor=0.5, patience=2
+)
 epochs = 30
 
 best_loss = float("inf")
@@ -130,6 +136,8 @@ for i in range(epochs):
             _, predicted = torch.max(outputs, 1)
             total += label.size(0)
             correct += (predicted == label).sum().item()
+
+    scheduler.step(val_loss)
 
     if val_loss < best_loss:
         best_loss = val_loss
