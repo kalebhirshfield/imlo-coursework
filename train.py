@@ -1,7 +1,7 @@
 import torch
 from torchvision import datasets, transforms
 import matplotlib.pyplot as plt
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, random_split, Dataset
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -22,9 +22,36 @@ for i in range(len(segmentation_data)):
     # plt.show()
     segmented_data.append((segmented_image, data[i][1]))
 
-train_data, val_data = random_split(segmented_data, [0.8, 0.2])
 
-train_dataloader = DataLoader(train_data, batch_size=64, shuffle=True)
+class TrainDataset(Dataset):
+    def __init__(self, data, apply_random=False):
+        super().__init__()
+        self.data = data
+        self.apply_random = apply_random
+        self.random = transforms.Compose(
+            [
+                transforms.ToPILImage(),
+                transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5),
+                transforms.RandomVerticalFlip(0.5),
+                transforms.RandomHorizontalFlip(0.5),
+                transforms.ToTensor(),
+            ]
+        )
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, index):
+        features, label = self.data[index]
+        if self.apply_random:
+            features = self.random(features)
+        return features, label
+
+
+train_data, val_data = random_split(segmented_data, [0.8, 0.2])
+train_dataset = TrainDataset(train_data, True)
+
+train_dataloader = DataLoader(train_dataset, batch_size=64, shuffle=True)
 val_dataloader = DataLoader(val_data, batch_size=64)
 
 device = (
