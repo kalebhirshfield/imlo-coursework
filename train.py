@@ -33,6 +33,7 @@ class TrainDataset(Dataset):
                 transforms.ToPILImage(),
                 transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5),
                 transforms.RandomHorizontalFlip(),
+                transforms.RandomResizedCrop(256, (0.6, 1.0)),
                 transforms.ToTensor(),
             ]
         )
