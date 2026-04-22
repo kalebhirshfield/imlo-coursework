@@ -1,9 +1,10 @@
 import torch
 from torchvision import datasets, transforms
 import matplotlib.pyplot as plt
-from torch.utils.data import DataLoader, random_split, Dataset
+from torch.utils.data import DataLoader, random_split, Dataset, Subset
 import torch.nn as nn
 import torch.nn.functional as F
+from sklearn.model_selection import train_test_split
 
 transform = transforms.Compose([transforms.Resize((256, 256)), transforms.ToTensor()])
 
@@ -50,9 +51,16 @@ class TrainDataset(Dataset):
         return features, label
 
 
-train_data, val_data = random_split(segmented_data, [0.8, 0.2])
-train_dataset = TrainDataset(train_data, True)
-val_dataset = TrainDataset(val_data)
+labels = [label for _, label in segmented_data]
+train_indices, val_indices = train_test_split(
+    range(len(segmented_data)), test_size=0.1, stratify=labels
+)
+
+train_subset = Subset(segmented_data, train_indices)
+val_subset = Subset(segmented_data, val_indices)
+
+train_dataset = TrainDataset(train_subset, True)
+val_dataset = TrainDataset(val_subset)
 
 train_dataloader = DataLoader(train_dataset, batch_size=64, shuffle=True)
 val_dataloader = DataLoader(val_dataset, batch_size=64)
