@@ -6,7 +6,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from sklearn.model_selection import train_test_split
 
-transform = transforms.Compose([transforms.Resize((256, 256)), transforms.ToTensor()])
+transform = transforms.ToTensor()
+resize = transforms.Resize((256, 256))
 
 data = datasets.OxfordIIITPet(root="data", download=True, transform=transform)
 segmentation_data = datasets.OxfordIIITPet(
@@ -18,7 +19,7 @@ for i in range(len(segmentation_data)):
     image, segmentation = segmentation_data[i]
     segmentation = transform(segmentation)
     mask = (segmentation > 0.01176) | (segmentation < 0.00784)
-    segmented_image = image * mask
+    segmented_image = resize(image * mask)
     # plt.imshow(segmented_image.squeeze().permute(1, 2, 0))
     # plt.show()
     segmented_data.append((segmented_image, data[i][1]))

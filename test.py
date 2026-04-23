@@ -4,23 +4,28 @@ from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.nn.functional as F
 
-transform = transforms.Compose([transforms.Resize((256, 256)), transforms.ToTensor()])
-normalise = transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
+transform1 = transforms.ToTensor()
+transform2 = transforms.Compose(
+    [
+        transforms.Resize((256, 256)),
+        transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
+    ]
+)
 
 data = datasets.OxfordIIITPet(
-    root="data", split="test", download=True, transform=transform
+    root="data", split="test", download=True, transform=transform1
 )
 segmentation_data = datasets.OxfordIIITPet(
-    root="data", split="test", target_types="segmentation", transform=transform
+    root="data", split="test", target_types="segmentation", transform=transform1
 )
 
 segmented_data = []
 for i in range(len(segmentation_data)):
     image, segmentation = segmentation_data[i]
-    segmentation = transform(segmentation)
+    segmentation = transform1(segmentation)
     mask = (segmentation > 0.01176) | (segmentation < 0.00784)
-    segmented_image = image * mask
-    segmented_data.append((normalise(segmented_image), data[i][1]))
+    segmented_image = transform2(image * mask)
+    segmented_data.append((segmented_image, data[i][1]))
 
 test_dataloader = DataLoader(segmented_data, batch_size=64)
 
