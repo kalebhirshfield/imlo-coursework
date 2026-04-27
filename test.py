@@ -4,8 +4,8 @@ from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.nn.functional as F
 
-transform1 = transforms.ToTensor()
-transform2 = transforms.Compose(
+transform = transforms.ToTensor()
+resize_and_normalise = transforms.Compose(
     [
         transforms.Resize((256, 256)),
         transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
@@ -13,18 +13,18 @@ transform2 = transforms.Compose(
 )
 
 data = datasets.OxfordIIITPet(
-    root="data", split="test", download=True, transform=transform1
+    root="data", split="test", download=True, transform=transform
 )
 segmentation_data = datasets.OxfordIIITPet(
-    root="data", split="test", target_types="segmentation", transform=transform1
+    root="data", split="test", target_types="segmentation", transform=transform
 )
 
 segmented_data = []
 for i in range(len(segmentation_data)):
     image, segmentation = segmentation_data[i]
-    segmentation = transform1(segmentation)
+    segmentation = transform(segmentation)
     mask = (segmentation > 0.01176) | (segmentation < 0.00784)
-    segmented_image = transform2(image * mask)
+    segmented_image = resize_and_normalise(image * mask)
     segmented_data.append((segmented_image, data[i][1]))
 
 test_dataloader = DataLoader(segmented_data, batch_size=64)
@@ -72,8 +72,6 @@ class ImageClassifier(nn.Module):
 
 model = ImageClassifier().to(device)
 model.load_state_dict(torch.load("model.pth"))
-
-lossFn = nn.CrossEntropyLoss()
 
 correct = 0
 total = 0

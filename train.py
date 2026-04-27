@@ -120,13 +120,11 @@ best_loss = float("inf")
 
 for i in range(epochs):
     model.train()
-    epoch_loss = 0
     for features, label in train_dataloader:
         features = features.to(device)
         label = label.to(device)
         pred = model(features)
         loss = lossFn(pred, label)
-        epoch_loss += loss.item()
 
         optimiser.zero_grad()
         loss.backward()
@@ -152,4 +150,6 @@ for i in range(epochs):
         best_loss = val_loss
         torch.save(model.state_dict(), "model.pth")
 
-    print(f"Epoch {i+1} loss: {epoch_loss}, accuracy: {correct * 100 / total}%")
+    accuracy = correct * 100 / total
+
+    print(f"Epoch {i+1} validation loss: {val_loss}, accuracy: {accuracy}%")
