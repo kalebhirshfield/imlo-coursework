@@ -4,10 +4,10 @@ from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.nn.functional as F
 
-transform = transforms.ToTensor()
-resize_and_normalise = transforms.Compose(
+transform = transforms.Compose(
     [
         transforms.Resize((256, 256)),
+        transforms.ToTensor(),
         transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
     ]
 )
@@ -15,19 +15,8 @@ resize_and_normalise = transforms.Compose(
 data = datasets.OxfordIIITPet(
     root="data", split="test", download=True, transform=transform
 )
-segmentation_data = datasets.OxfordIIITPet(
-    root="data", split="test", target_types="segmentation", transform=transform
-)
 
-segmented_data = []
-for i in range(len(segmentation_data)):
-    image, segmentation = segmentation_data[i]
-    segmentation = transform(segmentation)
-    mask = (segmentation > 0.01176) | (segmentation < 0.00784)
-    segmented_image = resize_and_normalise(image * mask)
-    segmented_data.append((segmented_image, data[i][1]))
-
-test_dataloader = DataLoader(segmented_data, batch_size=64)
+test_dataloader = DataLoader(data, batch_size=64)
 
 device = (
     torch.accelerator.current_accelerator().type

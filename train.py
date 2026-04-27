@@ -6,65 +6,40 @@ import torch.nn as nn
 import torch.nn.functional as F
 from sklearn.model_selection import train_test_split
 
-transform = transforms.ToTensor()
-resize = transforms.Resize((256, 256))
-
-data = datasets.OxfordIIITPet(root="data", download=True, transform=transform)
-segmentation_data = datasets.OxfordIIITPet(
-    root="data", target_types="segmentation", transform=transform
+train_transform = transforms.Compose(
+    [
+        transforms.ToTensor(),
+        transforms.Resize((256, 256)),
+        transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomResizedCrop(256, (0.6, 1.0)),
+        transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
+    ]
 )
 
-segmented_data = []
-for i in range(len(segmentation_data)):
-    image, segmentation = segmentation_data[i]
-    segmentation = transform(segmentation)
-    mask = (segmentation > 0.01176) | (segmentation < 0.00784)
-    segmented_image = resize(image * mask)
-    # plt.imshow(segmented_image.squeeze().permute(1, 2, 0))
-    # plt.show()
-    segmented_data.append((segmented_image, data[i][1]))
+val_transform = transforms.Compose(
+    [
+        transforms.ToTensor(),
+        transforms.Resize((256, 256)),
+        transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
+    ]
+)
 
+data = datasets.OxfordIIITPet(root="data", download=True)
 
-class TrainDataset(Dataset):
-    def __init__(self, data, apply_random=False):
-        super().__init__()
-        self.data = data
-        self.apply_random = apply_random
-        self.random = transforms.Compose(
-            [
-                transforms.ToPILImage(),
-                transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5),
-                transforms.RandomHorizontalFlip(),
-                transforms.RandomResizedCrop(256, (0.6, 1.0)),
-                transforms.ToTensor(),
-            ]
-        )
-        self.normalise = transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, index):
-        features, label = self.data[index]
-        if self.apply_random:
-            features = self.random(features)
-        features = self.normalise(features)
-        return features, label
-
-
-labels = [label for _, label in segmented_data]
+labels = [label for _, label in data]
 train_indices, val_indices = train_test_split(
-    range(len(segmented_data)), test_size=0.1, stratify=labels
+    range(len(data)), test_size=0.1, stratify=labels
 )
 
-train_subset = Subset(segmented_data, train_indices)
-val_subset = Subset(segmented_data, val_indices)
+train_data = datasets.OxfordIIITPet(root="data", transform=train_transform)
+val_data = datasets.OxfordIIITPet(root="data", transform=val_transform)
 
-train_dataset = TrainDataset(train_subset, True)
-val_dataset = TrainDataset(val_subset)
+train_subset = Subset(train_data, train_indices)
+val_subset = Subset(val_data, val_indices)
 
-train_dataloader = DataLoader(train_dataset, batch_size=64, shuffle=True)
-val_dataloader = DataLoader(val_dataset, batch_size=64)
+train_dataloader = DataLoader(train_subset, batch_size=64, shuffle=True)
+val_dataloader = DataLoader(val_subset, batch_size=64)
 
 device = (
     torch.accelerator.current_accelerator().type
