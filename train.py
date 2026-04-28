@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 train_transform = transforms.Compose(
     [
         transforms.ToTensor(),
-        transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5),
+        transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
         transforms.RandomHorizontalFlip(),
         transforms.RandomResizedCrop(256, (0.6, 1.0)),
         transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
