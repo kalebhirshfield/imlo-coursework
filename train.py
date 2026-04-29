@@ -8,18 +8,18 @@ from sklearn.model_selection import train_test_split
 
 train_transform = transforms.Compose(
     [
-        transforms.ToTensor(),
         transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
         transforms.RandomHorizontalFlip(),
         transforms.RandomResizedCrop(256, (0.6, 1.0)),
+        transforms.ToTensor(),
         transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
     ]
 )
 
 val_transform = transforms.Compose(
     [
-        transforms.ToTensor(),
         transforms.Resize((256, 256)),
+        transforms.ToTensor(),
         transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
     ]
 )
@@ -94,15 +94,25 @@ best_loss = float("inf")
 
 for i in range(epochs):
     model.train()
+    correct = 0
+    total = 0
+    train_loss = 0
     for features, label in train_dataloader:
         features = features.to(device)
         label = label.to(device)
-        pred = model(features)
-        loss = lossFn(pred, label)
+        outputs = model(features)
+        loss = lossFn(outputs, label)
+        train_loss += loss.item() * label.size(0)
+        _, predicted = torch.max(outputs, 1)
+        total += label.size(0)
+        correct += (predicted == label).sum().item()
 
         optimiser.zero_grad()
         loss.backward()
         optimiser.step()
+
+    train_loss /= total
+    train_accuracy = correct * 100 / total
 
     model.eval()
     correct = 0
@@ -113,10 +123,13 @@ for i in range(epochs):
             features = features.to(device)
             label = label.to(device)
             outputs = model(features)
-            val_loss += lossFn(outputs, label).item()
+            val_loss += lossFn(outputs, label).item() * label.size(0)
             _, predicted = torch.max(outputs, 1)
             total += label.size(0)
             correct += (predicted == label).sum().item()
+
+    val_loss /= total
+    val_accuracy = correct * 100 / total
 
     scheduler.step(val_loss)
 
@@ -124,6 +137,6 @@ for i in range(epochs):
         best_loss = val_loss
         torch.save(model.state_dict(), "model.pth")
 
-    accuracy = correct * 100 / total
-
-    print(f"Epoch {i+1} validation loss: {val_loss}, accuracy: {accuracy}%")
+    print(
+        f"Epoch {i+1}, train loss: {train_loss}, validation loss: {val_loss}, train accuracy: {train_accuracy}%, validation accuracy: {val_accuracy}%"
+    )
