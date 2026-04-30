@@ -47,36 +47,55 @@ device = (
 )
 
 
+# Takes inspiration from: https://www.digitalocean.com/community/tutorials/writing-resnet-from-scratch-in-pytorch#resnet-from-scratch-how-models-work-in-pytorch
+class ResidualBlock(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super().__init__()
+        self.conv1 = nn.Conv2d(in_channels, out_channels, 3, padding=1)
+        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, 3, padding=1)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+        self.pool = nn.MaxPool2d(2)
+
+        self.skip = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, 1),
+            nn.BatchNorm2d(out_channels),
+            nn.MaxPool2d(2),
+        )
+
+    def forward(self, x):
+        residual = self.skip(x)
+        x = self.pool(F.relu(self.bn1(self.conv1(x))))
+        x = self.bn2(self.conv2(x))
+        x = F.relu(x + residual)
+        return x
+
+
 class ImageClassifier(nn.Module):
     def __init__(self):
         super().__init__()
-        self.pool = nn.MaxPool2d(2, 2)
-        self.conv1 = nn.Conv2d(3, 32, 3, padding=1)
-        self.bn1 = nn.BatchNorm2d(32)
-        self.conv2 = nn.Conv2d(32, 64, 3, padding=1)
-        self.bn2 = nn.BatchNorm2d(64)
-        self.conv3 = nn.Conv2d(64, 128, 3, padding=1)
-        self.bn3 = nn.BatchNorm2d(128)
-        self.conv4 = nn.Conv2d(128, 256, 3, padding=1)
-        self.bn4 = nn.BatchNorm2d(256)
-        self.conv5 = nn.Conv2d(256, 256, 3, padding=1)
-        self.bn5 = nn.BatchNorm2d(256)
-        self.conv6 = nn.Conv2d(256, 512, 3, padding=1)
-        self.bn6 = nn.BatchNorm2d(512)
+        self.res1 = ResidualBlock(3, 32)
+        self.res2 = ResidualBlock(32, 64)
+        self.res3 = ResidualBlock(64, 128)
+        self.res4 = ResidualBlock(128, 256)
+        self.res5 = ResidualBlock(256, 256)
+        self.res6 = ResidualBlock(256, 512)
+
         self.dropout = nn.Dropout(0.5)
         self.fc1 = nn.Linear(512 * 4 * 4, 1024)
-        self.bn7 = nn.BatchNorm1d(1024)
+        self.bn = nn.BatchNorm1d(1024)
         self.fc2 = nn.Linear(1024, 37)
 
     def forward(self, x):
-        x = self.pool(F.relu(self.bn1(self.conv1(x))))
-        x = self.pool(F.relu(self.bn2(self.conv2(x))))
-        x = self.pool(F.relu(self.bn3(self.conv3(x))))
-        x = self.pool(F.relu(self.bn4(self.conv4(x))))
-        x = self.pool(F.relu(self.bn5(self.conv5(x))))
-        x = self.pool(F.relu(self.bn6(self.conv6(x))))
+        x = self.res1(x)
+        x = self.res2(x)
+        x = self.res3(x)
+        x = self.res4(x)
+        x = self.res5(x)
+        x = self.res6(x)
+
         x = torch.flatten(x, 1)
-        x = self.dropout(F.relu(self.bn7(self.fc1(x))))
+        x = self.dropout(F.relu(self.bn(self.fc1(x))))
         x = self.fc2(x)
         return x
 
@@ -84,9 +103,9 @@ class ImageClassifier(nn.Module):
 model = ImageClassifier().to(device)
 
 lossFn = nn.CrossEntropyLoss()
-optimiser = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.0001)
+optimiser = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.001)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-    optimiser, factor=0.5, patience=2
+    optimiser, factor=0.1, patience=2
 )
 epochs = 30
 
