@@ -68,9 +68,9 @@ class ResidualBlock(nn.Module):
 
     def forward(self, x):
         residual = self.skip(x)
-        x = self.pool(F.relu(self.bn1(self.conv1(x))))
+        x = self.pool(F.silu(self.bn1(self.conv1(x))))
         x = self.bn2(self.conv2(x))
-        x = F.relu(x + residual)
+        x = F.silu(x + residual)
         return x
 
 
@@ -100,7 +100,7 @@ class ImageClassifier(nn.Module):
         x = self.res7(x)
         x = self.gap(x)
         x = torch.flatten(x, 1)
-        x = self.dropout(F.relu(self.bn(self.fc1(x))))
+        x = self.dropout(F.silu(self.bn(self.fc1(x))))
         x = self.fc2(x)
         return x
 
