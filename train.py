@@ -12,7 +12,7 @@ train_transform = transforms.Compose(
     [
         transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
         transforms.RandomHorizontalFlip(),
-        transforms.RandomResizedCrop(256, (0.6, 1.0)),
+        transforms.RandomResizedCrop(224, (0.6, 1.0)),
         transforms.ToTensor(),
         transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
     ]
@@ -21,6 +21,7 @@ train_transform = transforms.Compose(
 val_transform = transforms.Compose(
     [
         transforms.Resize((256, 256)),
+        transforms.CenterCrop(224),
         transforms.ToTensor(),
         transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
     ]
