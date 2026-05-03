@@ -80,11 +80,12 @@ class ImageClassifier(nn.Module):
         self.res4 = ResidualBlock(128, 256)
         self.res5 = ResidualBlock(256, 256)
         self.res6 = ResidualBlock(256, 512)
-
+        self.res7 = ResidualBlock(512, 512)
+        self.gap = nn.AdaptiveAvgPool2d(1)
         self.dropout = nn.Dropout(0.5)
-        self.fc1 = nn.Linear(512 * 4 * 4, 1024)
-        self.bn = nn.BatchNorm1d(1024)
-        self.fc2 = nn.Linear(1024, 37)
+        self.fc1 = nn.Linear(512, 256)
+        self.bn = nn.BatchNorm1d(256)
+        self.fc2 = nn.Linear(256, 37)
 
     def forward(self, x):
         x = self.res1(x)
@@ -93,7 +94,8 @@ class ImageClassifier(nn.Module):
         x = self.res4(x)
         x = self.res5(x)
         x = self.res6(x)
-
+        x = self.res7(x)
+        x = self.gap(x)
         x = torch.flatten(x, 1)
         x = self.dropout(F.relu(self.bn(self.fc1(x))))
         x = self.fc2(x)
@@ -104,9 +106,7 @@ model = ImageClassifier().to(device)
 
 lossFn = nn.CrossEntropyLoss()
 optimiser = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.001)
-scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-    optimiser, factor=0.1, patience=2
-)
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimiser, 30)
 epochs = 30
 
 best_loss = float("inf")
@@ -150,7 +150,7 @@ for i in range(epochs):
     val_loss /= total
     val_accuracy = correct * 100 / total
 
-    scheduler.step(val_loss)
+    scheduler.step()
 
     if val_loss < best_loss:
         best_loss = val_loss
