@@ -6,6 +6,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from sklearn.model_selection import train_test_split
 
+torch.manual_seed(0)
+
 train_transform = transforms.Compose(
     [
         transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
@@ -28,7 +30,7 @@ data = datasets.OxfordIIITPet(root="data", download=True)
 
 labels = [label for _, label in data]
 train_indices, val_indices = train_test_split(
-    range(len(data)), test_size=0.1, stratify=labels
+    range(len(data)), test_size=0.1, stratify=labels, random_state=0
 )
 
 train_data = datasets.OxfordIIITPet(root="data", transform=train_transform)
