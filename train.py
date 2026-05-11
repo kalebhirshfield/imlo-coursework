@@ -89,8 +89,6 @@ optimiser = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.001)
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimiser, 30)
 epochs = 30
 
-best_loss = float("inf")
-
 for i in range(epochs):
     model.train()
     correct = 0
