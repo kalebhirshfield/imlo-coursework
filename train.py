@@ -1,10 +1,8 @@
 import torch
 from torchvision import datasets, transforms
-import matplotlib.pyplot as plt
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.nn.functional as F
-from sklearn.model_selection import train_test_split
 
 torch.manual_seed(0)
 
@@ -18,30 +16,9 @@ train_transform = transforms.Compose(
     ]
 )
 
-val_transform = transforms.Compose(
-    [
-        transforms.Resize((256, 256)),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
-    ]
-)
+data = datasets.OxfordIIITPet(root="data", download=True, transform=train_transform)
 
-data = datasets.OxfordIIITPet(root="data", download=True)
-
-labels = [label for _, label in data]
-train_indices, val_indices = train_test_split(
-    range(len(data)), test_size=0.1, stratify=labels, random_state=0
-)
-
-train_data = datasets.OxfordIIITPet(root="data", transform=train_transform)
-val_data = datasets.OxfordIIITPet(root="data", transform=val_transform)
-
-train_subset = Subset(train_data, train_indices)
-val_subset = Subset(val_data, val_indices)
-
-train_dataloader = DataLoader(train_subset, batch_size=64, shuffle=True)
-val_dataloader = DataLoader(val_subset, batch_size=64)
+train_dataloader = DataLoader(data, batch_size=64, shuffle=True)
 
 device = (
     torch.accelerator.current_accelerator().type
@@ -135,30 +112,24 @@ for i in range(epochs):
 
     train_loss /= total
     train_accuracy = correct * 100 / total
+    lr = optimiser.param_groups[0]["lr"]
 
-    model.eval()
-    correct = 0
-    total = 0
-    val_loss = 0
-    with torch.no_grad():
-        for features, label in val_dataloader:
-            features = features.to(device)
-            label = label.to(device)
-            outputs = model(features)
-            val_loss += lossFn(outputs, label).item() * label.size(0)
-            _, predicted = torch.max(outputs, 1)
-            total += label.size(0)
-            correct += (predicted == label).sum().item()
-
-    val_loss /= total
-    val_accuracy = correct * 100 / total
+    print(
+        f"Epoch {i+1}, train loss: {train_loss}, train accuracy: {train_accuracy}%, learning rate: {lr}"
+    )
 
     scheduler.step()
 
-    if val_loss < best_loss:
-        best_loss = val_loss
-        torch.save(model.state_dict(), "model.pth")
+model.eval()
+with torch.no_grad():
+    for features, label in train_dataloader:
+        features = features.to(device)
+        label = label.to(device)
+        outputs = model(features)
+        _, predicted = torch.max(outputs, 1)
+        total += label.size(0)
+        correct += (predicted == label).sum().item()
 
-    print(
-        f"Epoch {i+1}, train loss: {train_loss}, validation loss: {val_loss}, train accuracy: {train_accuracy}%, validation accuracy: {val_accuracy}%"
-    )
+print(f"{100 * correct / total}% accuracy")
+
+torch.save(model.state_dict(), "model.pth")
